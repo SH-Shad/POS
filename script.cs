@@ -1,40 +1,36 @@
-// script.js
-let products = [];
 let cart = JSON.parse(localStorage.getItem('cart')) || {};
 
-function fetchProducts() {
-    fetch('https://raw.githubusercontent.com/SH-Shad/POS/main/products.json')
-        .then(response => response.json())
-        .then(data => {
-            products = data;
-            displayProducts();
-        })
-        .catch(error => console.error('Error loading products:', error));
+async function fetchProducts() {
+    try {
+        const response = await fetch('products.json');
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
+        const data = await response.json();
+        displayProducts(data);
+    } catch (error) {
+        console.error("Could not load products: ", error);
+    }
 }
 
-function displayProducts(searchTerm = '') {
+function displayProducts(products) {
     const productsDiv = document.getElementById("products");
     productsDiv.innerHTML = '';
-    products.filter(product => product.name.toLowerCase().includes(searchTerm.toLowerCase())).forEach(product => {
+    products.forEach(product => {
         const productDiv = document.createElement("div");
         productDiv.innerHTML = `
             ${product.name} - $${product.price.toFixed(2)}
-            <button onclick="addToCart(${product.id})">Add to Cart</button>
+            <button onclick="addToCart(${JSON.stringify(product)})">Add to Cart</button>
         `;
         productsDiv.appendChild(productDiv);
     });
 }
 
-function searchProducts() {
-    const searchTerm = document.getElementById("productSearch").value;
-    displayProducts(searchTerm);
-}
-
-function addToCart(productId) {
-    if (!cart[productId]) {
-        cart[productId] = { ...products.find(p => p.id === productId), quantity: 0 };
+function addToCart(product) {
+    if (!cart[product.id]) {
+        cart[product.id] = { ...product, quantity: 0 };
     }
-    cart[productId].quantity++;
+    cart[product.id].quantity++;
     updateCartDisplay();
     saveCart();
 }
@@ -67,6 +63,7 @@ function updateCartDisplay() {
 }
 
 function checkout() {
+    // Generate a simple receipt
     const receipt = Object.values(cart).map(item => 
         `${item.name} x ${item.quantity} = $${(item.price * item.quantity).toFixed(2)}`
     ).join('\n');
@@ -80,4 +77,7 @@ function saveCart() {
     localStorage.setItem('cart', JSON.stringify(cart));
 }
 
-window.onload = fetchProducts;
+window.onload = function() {
+    fetchProducts(); // Fetch products on page load
+    updateCartDisplay();
+};
